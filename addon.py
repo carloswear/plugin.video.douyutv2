@@ -16,12 +16,14 @@ import xbmc,xbmcgui,urllib2,re,xbmcplugin
 from bs4 import BeautifulSoup
 from urlparse import parse_qsl
 import sys
-import json
-import hashlib,time
+import json,urllib
+import hashlib,time,uuid
 import xbmcaddon
 import HTMLParser
+import logging
 from danmu import OverlayText
 from douyudanmu import douyudanmu
+from Douyu import Douyu_HTTP_Server
 pars=HTMLParser.HTMLParser()
 __addon__ = xbmcaddon.Addon()
 __language__=__addon__.getLocalizedString
@@ -31,6 +33,10 @@ PAGE_LIMIT=10
 NEXT_PAGE=__language__(32001)
 headers={'Accept':
      'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8','Accept-Encoding': 'gzip, deflate','User-Agent':'Mozilla/5.0 (X11; Ubuntu; Linux i686; rv:16.0) Gecko/20100101 Firefox/16.0'}
+
+#Initialize logging
+logging.getLogger().setLevel(logging.INFO)
+logging.basicConfig(format='[%(levelname)s][%(funcName)s] %(message)s')
 
 
 TORRENT2HTTP_POLL = 1000
@@ -89,7 +95,7 @@ def list_videos(category,offset=0):
     #r=f.read()
     #rr=BeautifulSoup(r)
     rr=BeautifulSoup(requests.get('http://www.douyu.com'+category,headers=headers).text)
-    videol=rr.findAll('a',{'class':'list'},limit=offset+PAGE_LIMIT+1)
+    videol=rr.findAll('a',{'class':'play-list-link'},limit=offset+PAGE_LIMIT+1)
     listing=[]
     #with open('rooml.dat','w') as f:
     #  f.writelines([str(x) for x in videol])
@@ -103,8 +109,8 @@ def list_videos(category,offset=0):
         roomid=x['href'][1:]
         img=x.img['data-original']
         title=x['title']
-        nickname=x.find('span',{'class':'nnt'}).text
-        view=x.find('span',{'class':'view'}).text
+        nickname=x.find('span',{'class':'dy-name ellipsis fl'}).text
+        view=x.find('span',{'class':'dy-num fr'}).text
         liveinfo=u'{0}:{1}:{2}'.format(nickname,title,view)
         list_item=xbmcgui.ListItem(label=liveinfo,thumbnailImage=img)
         #list_item.setProperty('fanart_image',img)
@@ -131,7 +137,7 @@ def get_room(roomid,cdn):
       #  f.writelines([str(cdn),str(ts),str(sign),url,str(room)])
       return room
 
-def get_play_item(room):
+def get_play_item_old(room):
       img=room['data']['owner_avatar']
       nickname=room['data']['nickname']
       roomname=room['data']['room_name']
@@ -158,6 +164,51 @@ def get_play_item(room):
       play_item.setInfo(type="Video",infoLabels={"Title":combinedname})
       return (path,play_item)
 
+def get_play_item(roomid, cdn):
+    html = urllib2.urlopen("http://www.douyu.com/%s" % (roomid)).read().decode('utf-8')
+    match = re.search(r'"room_id"\s*:\s*(\d+),', html)
+    if match:
+        if match.group(0) != u'0':
+            roomid = match.group(1)
+
+    json_request_url = "http://m.douyu.com/html5/live?roomId=%s" % roomid
+    res = json.loads(urllib2.urlopen(json_request_url).read().decode('utf-8'))
+    status = res.get('error', 0)
+    if status is not 0:
+        logging.error('Unable to get information for roomid: %s' % (roomid))
+        return '', None #Error
+    data = res['data']
+    if data['show_status'] != u'1':
+        logging.error('The live stream is not online.')
+        return '', None #The live stream is not online
+    img=data['avatar']
+    nickname=data['nickname']
+    roomname=data['room_name']
+    combinedname=pars.unescape(u'{0}:{1}:{3}?cdn={2}'.format(nickname,roomname,cdn,roomid))
+
+
+    tt = int(time.time() / 60) 
+    did = uuid.uuid4().hex.upper()
+    sign_content = '{0}{1}A12Svb&%1UUmf@hC{2}'.format(roomid, did, tt) 
+    sign = hashlib.md5(sign_content.encode('utf-8')).hexdigest()
+
+    json_request_url = "http://www.douyu.com/lapi/live/getPlay/%s" % roomid
+    payload = {'cdn': cdn, 'rate': '0', 'tt': tt, 'did': did, 'sign': sign}
+    postdata = urllib.urlencode(payload)
+    content = urllib2.urlopen(json_request_url, postdata.encode('utf-8')).read()
+
+    res = json.loads(content.decode('utf-8'))
+    status = res.get('error', 0)
+    if status is not 0:
+        logging.error('Unable to get URL for roomid: %s' % (roomid))
+        return '', None #Error
+    data = res['data']
+    path = data.get('rtmp_url')+'/'+data.get('rtmp_live')
+    play_item = xbmcgui.ListItem(combinedname,path=path,thumbnailImage=img)
+    play_item.setInfo(type="Video",infoLabels={"Title":combinedname})
+    return (path,play_item)
+
+
 def play_video(roomid):
     """
     Play a video by the provided path.
@@ -166,15 +217,23 @@ def play_video(roomid):
     """
     cdnindex=__addon__.getSetting("cdn")
     player=xbmc.Player()
+    if cdnindex == "0":
+      cdnindex = "1"
     if cdnindex != "0":
       cdndict={"1":"ws","2":"ws2","3":"lx","4":"dl","5":"tct","6":""}
       cdn=cdndict[cdnindex]
-      room=get_room(roomid,cdn)
-      path,play_item=get_play_item(room)
+      # directly play the item.
+      path,play_item=get_play_item(roomid, cdn)
+      logging.debug(path)
+      if path == '':
+          return
       # Pass the item to the Kodi player.
       xbmcplugin.setResolvedUrl(_handle, True, listitem=play_item)
-      # directly play the item.
+      douyu=Douyu_HTTP_Server()
+      path=douyu.proxy(path)
       player.play(path, play_item)
+      douyu.wait_for_idle(1)
+      return
     else:
       cdnlist=["ws","ws2","lx","dl","tct"]
       itemlist=[get_play_item(get_room(roomid,x)) for x in cdnlist]
@@ -187,6 +246,7 @@ def play_video(roomid):
       playlist=xbmc.PlayList(xbmc.PLAYLIST_VIDEO)
       playlist.clear()
       for path,x in itemlist:
+        logging.warning(path)
         playlist.add(path,x)
       player.play(playlist)
     with closing(OverlayText(alignment=0)) as overlay:
