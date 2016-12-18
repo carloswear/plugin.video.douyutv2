@@ -3,6 +3,8 @@ import xbmc
 import xbmcaddon
 import xbmcgui
 import os
+import threading
+import time
 
 WINDOW_FULLSCREEN_VIDEO = 12005
 VIEWPORT_WIDTH = 1920.0
@@ -13,34 +15,110 @@ class OverlayText(object):
         viewport_w, viewport_h = self._get_skin_resolution()
         # Adjust size based on viewport, we are using 1080p coordinates
         self._shown = False
-        self._text = ""
-        textColor=kwargs.get("textColor", "0xFFFF0000")
-        fontSize=kwargs.get("fontSize", "font20")
-        self._label = xbmcgui.ControlLabel(int(viewport_w*0.75), int(viewport_h*0.05), int(viewport_w*0.25), int(viewport_h*0.2),
-            self._text,fontSize,textColor,alignment=0)
+        self.danmu = []
+        self.textlist = []
+        self.emptylines = []
+        self.thread = threading.Thread(target=self.scroll)
+        self.running = True
+        self.lines = kwargs.get("lines", 3)
+        textColor = kwargs.get("textColor", "0xFFFFFFFF")
+        fontSize = kwargs.get("fontSize", "normal")
+        position = kwargs.get("position", "up")
+        left = viewport_w*0.05
+        width = viewport_w*0.90
+        if position == "up":
+            top = viewport_h * 0.05
+        else:
+            top = viewport_h * 0.75
+        height = viewport_h * 0.20
+        if fontSize == "normal":
+            fontSize = "font15"
+            self.char_per_line = 180
+        else: 
+            fontSize = "font16"
+            self.char_per_line = 120
+        for i in  range(self.lines):
+            text = ''
+            for j in range(self.char_per_line):
+                text += ' ' 
+            self.textlist.append(text)
+            self.emptylines.append(i)
+
+        self._label = xbmcgui.ControlLabel(int(left), int(top), int(width), int(height),
+                                           "", fontSize, textColor, alignment=1)
+
+    def scroll(self):
+        speed = 1
+        while self.running:
+            if not self._shown:
+                time.sleep(0.1)
+                continue
+
+            for l in self.emptylines:
+                for i in range(speed):
+                    self.textlist[l] += ' '
+                    while (self.strlen(self.textlist[l]) > self.char_per_line):
+                        self.textlist[l] = self.textlist[l][1:]
+
+            for i in range(self.lines):
+                if len(self.danmu) <= i:
+                    #No more danmu
+                    break
+                
+                if self.danmu[i][1] == -1:
+                    if len(self.emptylines) == 0:
+                        #Corrupt
+                        break
+                    self.danmu[i] = (self.danmu[i][0], self.emptylines[0])
+                    self.emptylines.pop(0)
+
+                danmu = self.danmu[i]
+                line = danmu[1]
+                self.textlist[line] += danmu[0][:speed]
+                while (self.strlen(self.textlist[line]) > self.char_per_line):
+                    self.textlist[line] = self.textlist[line][1:]
+                self.danmu[i] = (danmu[0][speed:], danmu[1])
+                if len(danmu[0]) == 0:
+                    #This danmu is empty
+                    self.emptylines.append(danmu[1])
+                    self.danmu.pop(i)
+
+            #Update text. 
+            self.update()
+            time.sleep(0.1)
+
+    def strlen(self, text):
+        length = len(text)
+        utf8_length = len(text.encode('utf-8'))
+        return (utf8_length - length) / 2 + length
 
     def show(self):
         if not self._shown:
             self.window.addControls([self._label])
             self._shown = True
+            self.thread.start()
 
     def hide(self):
         if self._shown:
             self._shown = False
             self.window.removeControls([ self._label])
+            self.running = False
 
     def close(self):
         self.hide()
 
-    @property
-    def text(self):
-        return self._text
+    def add(self, text):
+        text += ' '
+        if (len(self.emptylines) == 0):
+            self.danmu.append((text, -1)) #pending
+        else:
+            line = self.emptylines[0]
+            self.danmu.append((text, line)) #pending
+            self.emptylines.pop(0)
 
-    @text.setter
-    def text(self, text):
-        self._text = text
-        if self._shown:
-            self._label.setLabel(self._text)
+    def update(self):
+        text = u'\n'.join(self.textlist)
+        self._label.setLabel(text)
 
     # This is so hackish it hurts.
     def _get_skin_resolution(self):

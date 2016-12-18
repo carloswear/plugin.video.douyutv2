@@ -230,28 +230,26 @@ def play_video(roomid):
     path=douyu.proxy(path)
     player.play(path, play_item)
     if __addon__.getSetting("danmu") == "true":
-        colordict={"0":"FF0000", "1":"00FFFF", "2":"0000FF", "3":"FFFFFF", "4":"000000"}
+        colordict={"0":"FF0000", "1":"00FF00", "2":"0000FF", "3":"FFFFFF", "4":"000000"}
+        fontdict={"0":"normal","1":"large"}
+        positiondict={"0":"up","1":"down"}
         textColor="{:X}".format(int(__addon__.getSetting("textAlpha"))) + colordict[__addon__.getSetting("textColor")]
-        fontSize="font"+str(__addon__.getSetting("fontSize"))
+        fontSize=fontdict[__addon__.getSetting("fontSize")]
+        position=positiondict[__addon__.getSetting("position")]
         with closing(OverlayText(alignment=0,
                                  textColor=textColor,
+                                 position=position,
                                  fontSize=fontSize)) as overlay:
           #print "starting",i
           while not player.isPlaying():
             xbmc.sleep(100)
           overlay.show()
-          overlay.text=u'弹幕初始化。。。'
-          textlist=[u'弹幕初始化成功。。。']
+          overlay.add(u'弹幕初始化成功。。。')
           danmu=douyudanmu(roomid)
           while not xbmc.abortRequested and player.isPlaying():
-          #while not xbmc.abortRequested:
             s=danmu.get_danmu()
             if len(s)!=0:
-              textlist.append(s)
-              if(len(textlist)>20):
-                textlist.pop(0)
-            overlay.text=u'\n'.join(textlist)
-            #print "looping",i
+                overlay.add(s)
           danmu.exit()
         douyu.exit()
     else:
