@@ -217,9 +217,7 @@ def play_video(roomid):
     """
     cdnindex=__addon__.getSetting("cdn")
     player=xbmc.Player()
-    if cdnindex == "0":
-      cdnindex = "1"
-    cdndict={"1":"ws","2":"ws2","3":"lx","4":"dl","5":"tct","6":""}
+    cdndict={"0":"","1":"ws","2":"ws2","3":"lx","4":"dl","5":"tct"}
     cdn=cdndict[cdnindex]
     # directly play the item.
     roomid,path,play_item=get_play_item(roomid, cdn)
@@ -232,7 +230,12 @@ def play_video(roomid):
     path=douyu.proxy(path)
     player.play(path, play_item)
     if __addon__.getSetting("danmu") == "true":
-        with closing(OverlayText(alignment=0)) as overlay:
+        colordict={"0":"FF0000", "1":"00FFFF", "2":"0000FF", "3":"FFFFFF", "4":"000000"}
+        textColor="{:X}".format(int(__addon__.getSetting("textAlpha"))) + colordict[__addon__.getSetting("textColor")]
+        fontSize="font"+str(__addon__.getSetting("fontSize"))
+        with closing(OverlayText(alignment=0,
+                                 textColor=textColor,
+                                 fontSize=fontSize)) as overlay:
           #print "starting",i
           while not player.isPlaying():
             xbmc.sleep(100)
