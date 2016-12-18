@@ -14,8 +14,8 @@ class OverlayText(object):
         # Adjust size based on viewport, we are using 1080p coordinates
         self._shown = False
         self._text = ""
-        self._label = xbmcgui.ControlLabel(int(viewport_w*0.7), int(viewport_h*0.10), int(viewport_w*0.3), int(viewport_h*0.8),
-            self._text,alignment=0)
+        self._label = xbmcgui.ControlLabel(int(viewport_w*0.75), int(viewport_h*0.05), int(viewport_w*0.25), int(viewport_h*0.2),
+            self._text,'font30','0xFFFF0000',alignment=0)
 
     def show(self):
         if not self._shown:

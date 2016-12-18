@@ -206,7 +206,7 @@ def get_play_item(roomid, cdn):
     path = data.get('rtmp_url')+'/'+data.get('rtmp_live')
     play_item = xbmcgui.ListItem(combinedname,path=path,thumbnailImage=img)
     play_item.setInfo(type="Video",infoLabels={"Title":combinedname})
-    return (path,play_item)
+    return (roomid,path,play_item)
 
 
 def play_video(roomid):
@@ -219,57 +219,40 @@ def play_video(roomid):
     player=xbmc.Player()
     if cdnindex == "0":
       cdnindex = "1"
-    if cdnindex != "0":
-      cdndict={"1":"ws","2":"ws2","3":"lx","4":"dl","5":"tct","6":""}
-      cdn=cdndict[cdnindex]
-      # directly play the item.
-      path,play_item=get_play_item(roomid, cdn)
-      logging.debug(path)
-      if path == '':
-          return
-      # Pass the item to the Kodi player.
-      xbmcplugin.setResolvedUrl(_handle, True, listitem=play_item)
-      douyu=Douyu_HTTP_Server()
-      path=douyu.proxy(path)
-      player.play(path, play_item)
-      douyu.wait_for_idle(1)
-      return
-    else:
-      cdnlist=["ws","ws2","lx","dl","tct"]
-      itemlist=[get_play_item(get_room(roomid,x)) for x in cdnlist]
-      if __addon__.getSetting("excludeRTMP") == 'true':
-        newitemlist=[]
-        for path,x in itemlist:
-          if 'rtmp' not in path:
-            newitemlist.append((path,x))
-        itemlist=newitemlist
-      playlist=xbmc.PlayList(xbmc.PLAYLIST_VIDEO)
-      playlist.clear()
-      for path,x in itemlist:
-        logging.warning(path)
-        playlist.add(path,x)
-      player.play(playlist)
-    with closing(OverlayText(alignment=0)) as overlay:
-      #print "starting",i
-      while not player.isPlaying():
-        xbmc.sleep(100)
-      overlay.show()
-      overlay.text=u'弹幕初始化。。。'
-      textlist=[u'弹幕初始化成功。。。']
-      danmu=douyudanmu(roomid)
-      print danmu.roominfo,roomid
-      if danmu.roominfo==None:
+    cdndict={"1":"ws","2":"ws2","3":"lx","4":"dl","5":"tct","6":""}
+    cdn=cdndict[cdnindex]
+    # directly play the item.
+    roomid,path,play_item=get_play_item(roomid, cdn)
+    logging.debug(path)
+    if path == '':
         return
-      while not xbmc.abortRequested and player.isPlaying():
-      #while not xbmc.abortRequested:
-        s=danmu.get_danmu()
-        if len(s)!=0:
-          textlist.append(s)
-          if(len(textlist)>20):
-            textlist.pop(0)
-        overlay.text=u'\n'.join(textlist)
-        #print "looping",i
-    danmu.exit()
+    # Pass the item to the Kodi player.
+    xbmcplugin.setResolvedUrl(_handle, True, listitem=play_item)
+    douyu=Douyu_HTTP_Server()
+    path=douyu.proxy(path)
+    player.play(path, play_item)
+    if __addon__.getSetting("danmu") == "true":
+        with closing(OverlayText(alignment=0)) as overlay:
+          #print "starting",i
+          while not player.isPlaying():
+            xbmc.sleep(100)
+          overlay.show()
+          overlay.text=u'弹幕初始化。。。'
+          textlist=[u'弹幕初始化成功。。。']
+          danmu=douyudanmu(roomid)
+          while not xbmc.abortRequested and player.isPlaying():
+          #while not xbmc.abortRequested:
+            s=danmu.get_danmu()
+            if len(s)!=0:
+              textlist.append(s)
+              if(len(textlist)>20):
+                textlist.pop(0)
+            overlay.text=u'\n'.join(textlist)
+            #print "looping",i
+          danmu.exit()
+        douyu.exit()
+    else:
+        douyu.wait_for_idle(1)
 
 
       

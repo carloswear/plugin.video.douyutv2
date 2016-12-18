@@ -123,5 +123,8 @@ class Douyu_HTTP_Server(object):
         global douyu_http_server_idle_event
         while (douyu_http_server_idle_event.wait(wait_option) == True):
             time.sleep(wait_option)
+        self.exit()
+
+    def exit(self):
         self.httpd.shutdown()
         logging.info('Proxy exit')

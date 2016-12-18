@@ -28,9 +28,9 @@ class douyudanmu():
         msg= unpackage(bmsg)
         msgtype= msg.get(b'type',b'undefined')
 
-        if msgtype==b'chatmessage':
-                nick= msg[b'snick'].decode('utf8')
-                content=msg.get(b'content',b'undefined')
+        if msgtype==b'chatmsg':
+                nick= msg[b'nn'].decode('utf8')
+                content=msg.get(b'txt',b'undefined')
                 try:
                   content= content.decode('utf8')
                 except UnicodeDecodeError:
@@ -85,31 +85,12 @@ class douyudanmu():
             return('')
         return('')
   def __init__(self,roomid):
-      self.roominfo=None
-      for i in range(10):
-        login_user_info= get_room_info(roomid)
-        for x in login_user_info:
-          login_room_info= get_longinres(**x)
-          if login_room_info!=None:
-            break
-        if (login_room_info!=None):
-          self.roominfo=login_room_info
-          break
-        time.sleep(i)
-      if self.roominfo==None:
-        return
-      rid=self.roominfo['rid']
-      ip=self.roominfo['ip']
-      port=self.roominfo['port']
-      username=self.roominfo['username']
-      gid=self.roominfo['gid']
-
       self.s= socket.socket(socket.AF_INET, socket.SOCK_STREAM)
       self.s.settimeout(120)
-      self.s.connect((ip,int(port)))
-      sendmsg(self.s,b'type@=loginreq/username@=/password@=/roomid@='+rid+b'/\x00')
+      self.s.connect((socket.gethostbyname('openbarrage.douyutv.com'),8601))
+      sendmsg(self.s,b'type@=loginreq/\x00')
       loginres= unpackage(recvmsg(self.s))
-      sendmsg(self.s,b'type@=joingroup/rid@='+rid+b'/gid@='+gid+b'/\x00')
+      sendmsg(self.s,b'type@=joingroup/rid@='+roomid+b'/gid@=-9999/\x00')
 
       def keepalive():
           while not self.is_exit():
@@ -166,74 +147,13 @@ def unpackage(data):
 
     return ret
 
-def unpackage_list(l):
-    ret=[]
-    lines= l.split(b'@S')
-    for line in lines:
-        line= line.replace(b'@AA',b'')
-        mp= line.split(b'@AS')
-        tb={}
-        for kv in mp:
-            try:
-                k,v= kv.split(b'=')
-                tb[k]=v
-            except:
-                pass
-        ret.append(tb)
-    return ret
-
-def get_longinres(s_ip, s_port, rid):
-    s= socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.settimeout(120)
-    s.connect((s_ip, int(s_port)))
-    sendmsg(s,b'type@=loginreq/username@=/password@=/roomid@='+rid+b'/\x00')
-    longinres= unpackage(recvmsg(s))
-    msgrepeaterlist= unpackage(recvmsg(s))
-    if msgrepeaterlist[b'type']==b'error':
-      return None
-    lst= unpackage(msgrepeaterlist[b'list'])
-    tb= unpackage(random.choice(tuple(lst.values())))
-    setmsggroup= unpackage(recvmsg(s))
-    ret= {'rid':rid,
-          'username': longinres[b'username'],
-          'ip': tb[b'ip'],
-          'port': tb[b'port'],
-          'gid': setmsggroup[b'gid']
-         }
-    return ret
-
-
-
-def unescape_html(string):
-  '''HTML entity decode'''
-  return pars.unescape(string)
-
-def get_room_info(roomid):
-    API_URL = "http://www.douyutv.com/swf_api/room/{0}?cdn={1}&nofan=yes&_t={2}&sign={3}"
-    API_SECRET = u'bLFlashflowlad92'
-    ts = int(time.time()/60)
-    sign = hashlib.md5(("{0}{1}{2}".format(roomid, API_SECRET, ts)).encode("utf-8")).hexdigest()
-    apiurl=API_URL.format(roomid,"", ts, sign)
-    #conf = get_content(apiurl)
-    response = request.urlopen(apiurl)
-    conf= response.read()
-    metadata = json.loads(conf)
-    servers= metadata['data']['servers']
-    dest_server= servers[0]
-    return [{'s_ip': dest_server['ip'],
-            's_port': dest_server['port'],
-            'rid': metadata['data']['room_id'].encode()
-           } for dest_server in servers]
-
-def main(roomid='16789'):
+def main(roomid='633144'):
     danmu=douyudanmu(roomid)
-    if danmu.roominfo==None:
-      return
     while True:
       s=danmu.get_danmu()
       if len(s)!=0:
         print s
 
 if __name__=='__main__':
-    url= sys.argv[1] if len(sys.argv)>1 else '16789'
+    url= sys.argv[1] if len(sys.argv)>1 else '633144'
     main(url)
