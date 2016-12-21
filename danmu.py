@@ -5,6 +5,11 @@ import xbmcgui
 import os
 import threading
 import time
+import logging
+
+#Initialize logging
+logging.getLogger().setLevel(logging.INFO)
+logging.basicConfig(format='[%(levelname)s][%(funcName)s] %(message)s')
 
 WINDOW_FULLSCREEN_VIDEO = 12005
 VIEWPORT_WIDTH = 1920.0
@@ -24,8 +29,8 @@ class OverlayText(object):
         textColor = kwargs.get("textColor", "0xFFFFFFFF")
         fontSize = kwargs.get("fontSize", "normal")
         position = kwargs.get("position", "up")
-        left = viewport_w*0.05
-        width = viewport_w*0.90
+        left = -viewport_w*0.55
+        width = viewport_w*1.55
         if position == "up":
             top = viewport_h * 0.05
         else:
@@ -33,10 +38,10 @@ class OverlayText(object):
         height = viewport_h * 0.20
         if fontSize == "normal":
             fontSize = "font15"
-            self.char_per_line = 180
+            self.char_per_line = 240
         else: 
             fontSize = "font16"
-            self.char_per_line = 120
+            self.char_per_line = 180
         for i in  range(self.lines):
             text = ''
             for j in range(self.char_per_line):
@@ -68,9 +73,13 @@ class OverlayText(object):
                 if self.danmu[i][1] == -1:
                     if len(self.emptylines) == 0:
                         #Corrupt
+                        logging.error('No empty lines')
                         break
                     self.danmu[i] = (self.danmu[i][0], self.emptylines[0])
-                    self.emptylines.pop(0)
+                    line = self.emptylines.pop(0)
+                    logging.debug('LINE:'+str(line)+':')
+                    logging.debug(self.emptylines)
+                    logging.debug(self.danmu[:3])
 
                 danmu = self.danmu[i]
                 line = danmu[1]
@@ -78,14 +87,18 @@ class OverlayText(object):
                 while (self.strlen(self.textlist[line]) > self.char_per_line):
                     self.textlist[line] = self.textlist[line][1:]
                 self.danmu[i] = (danmu[0][speed:], danmu[1])
-                if len(danmu[0]) == 0:
+                if len(self.danmu[i][0]) == 0:
                     #This danmu is empty
                     self.emptylines.append(danmu[1])
+                    logging.debug(str(danmu[1])+' FREE')
+                    logging.debug(self.emptylines)
+                    logging.debug(self.danmu[:3])
                     self.danmu.pop(i)
 
             #Update text. 
             self.update()
             time.sleep(0.1)
+        logging.info('Danmu exit')
 
     def strlen(self, text):
         length = len(text)
@@ -109,12 +122,8 @@ class OverlayText(object):
 
     def add(self, text):
         text += ' '
-        if (len(self.emptylines) == 0):
-            self.danmu.append((text, -1)) #pending
-        else:
-            line = self.emptylines[0]
-            self.danmu.append((text, line)) #pending
-            self.emptylines.pop(0)
+        logging.debug('TEXT:' + text)
+        self.danmu.append((text, -1)) #pending
 
     def update(self):
         text = u'\n'.join(self.textlist)
