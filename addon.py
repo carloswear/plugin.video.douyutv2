@@ -290,14 +290,4 @@ def router(paramstring):
 if __name__ == '__main__':
     # Call the router function and pass the plugin call parameters to it.
     # We use string slicing to trim the leading '?' from the plugin call paramstring
-    #router(sys.argv[2][1:])
-
-    import xbmcgui
-    import time
-    window = xbmcgui.Window()
-    label = xbmcgui.ControlLabel(0,0,100,100,"Test")
-    window.addControl(label)
-    window.show()
-    label.setAnimations([('conditional', 'condition=true effect=slide start=0,0 end=100,0 time=5000')])
-    time.sleep(5)
-    window.removeControl(label)
+    router(sys.argv[2][1:])
