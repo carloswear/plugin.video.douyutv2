@@ -87,9 +87,9 @@ class BulletScreen(object):
                         label.delay -= interval
                     else:
                         self.available_line.append(label.line)
-                        while (len(self.texts) < (2 << (self.lines - 1))) and (self.lines in self.available_line):
-                            self.available_line.remove(self.lines)
+                        while (len(self.texts) < (2 << (self.lines - 1))) and ((self.lines - 1) in self.available_line):
                             self.lines -= 1
+                            self.available_line.remove((self.lines))
                         label.delay = 0
 
                 #Remove label that is timeout
