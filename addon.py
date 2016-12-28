@@ -232,14 +232,15 @@ def play_video(roomid):
     if __addon__.getSetting("danmu") == "true":
         colordict={"0":"FF0000", "1":"00FF00", "2":"0000FF", "3":"FFFFFF", "4":"000000"}
         fontdict={"0":"normal","1":"large"}
+        speeddict={"0":10000,"1":5000}
         positiondict={"0":"up","1":"down"}
         textColor="{:X}".format(int(__addon__.getSetting("textAlpha"))) + colordict[__addon__.getSetting("textColor")]
         fontSize=fontdict[__addon__.getSetting("fontSize")]
         position=positiondict[__addon__.getSetting("position")]
-        bs = BulletScreen(textColor=textColor, position=position, fontSize=fontSize)
+        speed=speeddict[__addon__.getSetting("speed")]
+        bs = BulletScreen(textColor=textColor, position=position, fontSize=fontSize, speed=speed)
         while not player.isPlaying():
           xbmc.sleep(100)
-        bs.addText(u'弹幕初始化成功。。。')
         danmu=douyudanmu(roomid)
         while not xbmc.abortRequested and player.isPlaying():
           s=danmu.get_danmu()

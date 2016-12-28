@@ -43,7 +43,7 @@ class BulletScreen(object):
         position = kwargs.get("position", "up")
         self.left =int(viewport_w) 
         self.width = int(viewport_w)
-        self.speed = 10000
+        self.speed = kwargs.get("speed", 10000)
         lines = kwargs.get("lines", 3)
         if fontSize == "normal":
             self.fontSize = "font13"
