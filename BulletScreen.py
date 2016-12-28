@@ -41,16 +41,16 @@ class BulletScreen(object):
         self.textColor = kwargs.get("textColor", "0xFFFFFFFF")
         fontSize = kwargs.get("fontSize", "normal")
         position = kwargs.get("position", "up")
-        self.left = 0
+        self.left =int(viewport_w) 
         self.width = int(viewport_w)
         self.speed = 10000
         lines = kwargs.get("lines", 3)
         if fontSize == "normal":
-            self.fontSize = "font15"
-            self.height = int(viewport_h * 0.05)
+            self.fontSize = "font13"
+            self.height = int(viewport_h * 0.03)
         else: 
             self.fontSize = "font16"
-            self.height = int(viewport_h * 0.06)
+            self.height = int(viewport_h * 0.04)
         if position == "up":
             self.top = int(viewport_h * 0.01)
         else:
@@ -71,7 +71,7 @@ class BulletScreen(object):
                 self.labels.append(BulletLabel(text, label, self.speed, top)) 
                 self.window.addControl(label)
                 label.setAnimations([('conditional', 'condition=true effect=slide start=%d,0 end=%d,0 time=%d' % 
-                                                     (self.width, -self.width, self.speed))])
+                                                     (0, -(self.width * 2), self.speed))])
                 logging.debug('Add label: ' + text)
 
             for label in self.labels:
