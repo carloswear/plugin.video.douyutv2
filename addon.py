@@ -21,7 +21,7 @@ import hashlib,time,uuid
 import xbmcaddon
 import HTMLParser
 import logging
-from danmu import OverlayText
+from BulletScreen import BulletScreen
 from douyudanmu import douyudanmu
 from Douyu import Douyu_HTTP_Server
 pars=HTMLParser.HTMLParser()
@@ -36,7 +36,7 @@ headers={'Accept':
 
 #Initialize logging
 logging.getLogger().setLevel(logging.INFO)
-logging.basicConfig(format='[%(levelname)s][%(funcName)s] %(message)s')
+logging.basicConfig(format='[%(module)s][%(funcName)s] %(message)s')
 
 
 TORRENT2HTTP_POLL = 1000
@@ -236,21 +236,17 @@ def play_video(roomid):
         textColor="{:X}".format(int(__addon__.getSetting("textAlpha"))) + colordict[__addon__.getSetting("textColor")]
         fontSize=fontdict[__addon__.getSetting("fontSize")]
         position=positiondict[__addon__.getSetting("position")]
-        with closing(OverlayText(alignment=0,
-                                 textColor=textColor,
-                                 position=position,
-                                 fontSize=fontSize)) as overlay:
-          #print "starting",i
-          while not player.isPlaying():
-            xbmc.sleep(100)
-          overlay.show()
-          overlay.add(u'弹幕初始化成功。。。')
-          danmu=douyudanmu(roomid)
-          while not xbmc.abortRequested and player.isPlaying():
-            s=danmu.get_danmu()
-            if len(s)!=0:
-                overlay.add(s)
-          danmu.exit()
+        bs = BulletScreen(textColor=textColor, position=position, fontSize=fontSize)
+        while not player.isPlaying():
+          xbmc.sleep(100)
+        bs.addText(u'弹幕初始化成功。。。')
+        danmu=douyudanmu(roomid)
+        while not xbmc.abortRequested and player.isPlaying():
+          s=danmu.get_danmu()
+          if len(s)!=0:
+              bs.addText(s)
+        bs.exit()
+        danmu.exit()
         douyu.exit()
     else:
         douyu.wait_for_idle(1)
