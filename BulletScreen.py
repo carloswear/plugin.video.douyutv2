@@ -11,10 +11,10 @@ logging.basicConfig(format='[%(module)s][%(funcName)s] %(message)s')
 
 WINDOW_FULLSCREEN_VIDEO = 12005
 class BulletLabel(object):
-    def __init__(self, text, label, timeout, top):
+    def __init__(self, text, label, timeout, line):
         self.label = label
         self.timeout = timeout
-        self.top = top
+        self.line = line
         self.delay = self.showtime(text, timeout)
 
     def showtime(self, text, timeout):
@@ -44,31 +44,37 @@ class BulletScreen(object):
         self.left =int(viewport_w) 
         self.width = int(viewport_w)
         self.speed = kwargs.get("speed", 10000)
-        lines = kwargs.get("lines", 3)
         if fontSize == "normal":
             self.fontSize = "font13"
-            self.height = int(viewport_h * 0.03)
+            self.fontHeight = int(viewport_h * 0.03)
         else: 
             self.fontSize = "font16"
-            self.height = int(viewport_h * 0.04)
+            self.fontHeight = int(viewport_h * 0.04)
         if position == "up":
+            self.direction = 1
             self.top = int(viewport_h * 0.01)
         else:
-            self.top = int(viewport_h * 0.99) - lines * self.height
+            self.direction = -1
+            self.top = int(viewport_h * 0.99 - self.fontHeight)
+
         self.available_line = []
-        for i in range(lines):
-            self.available_line.append(self.top + i * self.height)
+        self.lines = 0
 
     def run(self):
         interval = 100
         while self.running:
+            while len(self.texts) >= (2 << self.lines):
+                self.available_line.append(self.lines)
+                self.lines += 1
+
             while ((len(self.available_line) > 0) and (len(self.texts) > 0)):
                 #Add texts
                 text = self.texts.pop(0)
-                top = self.available_line.pop(0)
-                label = xbmcgui.ControlLabel(self.left, top, self.width, self.height, text, 
+                line = self.available_line.pop(0) 
+                top = self.top + self.direction * self.fontHeight * line
+                label = xbmcgui.ControlLabel(self.left, top, self.width, self.fontHeight, text, 
                                              self.fontSize, self.textColor)
-                self.labels.append(BulletLabel(text, label, self.speed, top)) 
+                self.labels.append(BulletLabel(text, label, self.speed, line)) 
                 self.window.addControl(label)
                 label.setAnimations([('conditional', 'condition=true effect=slide start=%d,0 end=%d,0 time=%d' % 
                                                      (0, -(self.width * 2), self.speed))])
@@ -80,7 +86,10 @@ class BulletScreen(object):
                     if label.delay > interval:
                         label.delay -= interval
                     else:
-                        self.available_line.append(label.top)
+                        self.available_line.append(label.line)
+                        while (len(self.texts) < (2 << (self.lines - 1))) and (self.lines in self.available_line):
+                            self.available_line.remove(self.lines)
+                            self.lines -= 1
                         label.delay = 0
 
                 #Remove label that is timeout
