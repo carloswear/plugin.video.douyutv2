@@ -187,15 +187,17 @@ def get_play_item(roomid, cdn):
     combinedname=pars.unescape(u'{0}:{1}:{3}?cdn={2}'.format(nickname,roomname,cdn,roomid))
 
 
-    tt = int(time.time() / 60) 
+    tt = int(time.time()) 
     did = uuid.uuid4().hex.upper()
-    sign_content = '{0}{1}A12Svb&%1UUmf@hC{2}'.format(roomid, did, tt) 
+    sign_content = 'lapi/live/thirdPart/getPlay/{0}?aid=pcclient&cdn={1}&rate={2}&time={3}9TUk5fjjUjg9qIMH3sdnh'.format(roomid,
+            cdn, '0', tt).encode("ascii")
     sign = hashlib.md5(sign_content.encode('utf-8')).hexdigest()
+    headers = {"auth": sign, "time": str(tt), "aid": "pcclient"}
 
-    json_request_url = "http://www.douyu.com/lapi/live/getPlay/%s" % roomid
-    payload = {'cdn': cdn, 'rate': '0', 'tt': tt, 'did': did, 'sign': sign}
-    postdata = urllib.urlencode(payload)
-    content = urllib2.urlopen(json_request_url, postdata.encode('utf-8')).read()
+    json_request_url = "https://coapi.douyucdn.cn/lapi/live/thirdPart/getPlay/{0}?cdn={1}&rate={2}".format(roomid,
+            cdn, '0')
+    content = urllib2.urlopen(urllib2.Request(json_request_url,
+        headers=headers)).read()
 
     res = json.loads(content.decode('utf-8'))
     status = res.get('error', 0)
@@ -203,7 +205,7 @@ def get_play_item(roomid, cdn):
         logging.error('Unable to get URL for roomid: %s' % (roomid))
         return '', None #Error
     data = res['data']
-    path = data.get('rtmp_url')+'/'+data.get('rtmp_live')
+    path = data.get('live_url')
     play_item = xbmcgui.ListItem(combinedname,path=path,thumbnailImage=img)
     play_item.setInfo(type="Video",infoLabels={"Title":combinedname})
     return (roomid,path,play_item)
